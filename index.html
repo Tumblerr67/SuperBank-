@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperBank - SuperPay</title>
+  <style>
+    body { font-family: Arial; background: #0a0a0a; color: #0f0; margin: 0; padding: 15px; }
+    .card { background: linear-gradient(135deg, #1a1a1a, #003300); padding: 20px; border-radius: 15px; margin: 10px 0; border: 2px solid #0f0; }
+    button { padding: 12px 20px; margin: 5px; background: #0f0; color: black; border: none; border-radius: 8px; font-weight: bold; }
+    input { padding: 10px; margin: 5px 0; width: 90%; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div id="loginScreen">
+    <h1>SuperBank</h1>
+    <h2>Вход</h2>
+    <input id="username" placeholder="Имя пользователя" /><br>
+    <input id="password" type="password" placeholder="Пароль" /><br><br>
+    <button onclick="login()">Войти</button>
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="card">
+      <h2>Карта SuperPay</h2>
+      <p>Владелец: <span id="userName"></span></p>
+      <p>Баланс: <span id="balance">0</span> Sup</p>
+      <p>Номер карты: <span id="cardNumber"></span></p>
+    </div>
+
+    <button onclick="transfer()">💸 Перевести Sup</button>
+    <button onclick="showUsers()">👥 Пользователи</button>
+    <button onclick="logout()">Выход</button>
+
+    <div id="adminPanel" style="display:none; background:#330000; padding:15px; margin:15px 0; border-radius:10px;">
+      <h2>👑 АДМИН ПАНЕЛЬ</h2>
+      <button onclick="adminGiveMoney()">Дать деньги</button>
+      <button onclick="adminFine()">Наложить штраф</button>
+    </div>
+
+    <div id="content"></div>
+  </div>
+
+  <script>
+    const BIN_ID = "вставь_сюда_Bin_ID";
+    const MASTER_KEY = "вставь_сюда_X-Master-Key";
+
+    let currentUser = null;
+
+    async function fetchData() {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+        headers: { "X-Master-Key": MASTER_KEY }
+      });
+      const json = await res.json();
+      return json.record || { users: {}, history: [] };
+    }
+
+    async function saveData(data) {
+      await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Master-Key": MASTER_KEY
+        },
+        body: JSON.stringify(data)
+      });
+    }
+
+    async function login() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      
+      const data = await fetchData();
+      const user = data.users[username];
+
+      if (user && user.password === password) {
+        currentUser = { name: username, ...user };
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        
+        document.getElementById('userName').innerText = currentUser.name;
+        document.getElementById('balance').innerText = currentUser.balance || 0;
+        document.getElementById('cardNumber').innerText = currentUser.cardNumber || "SUP-XXXX";
+
+        if (currentUser.role === "admin") {
+          document.getElementById('adminPanel').style.display = 'block';
+        }
+      } else {
+        alert("Неверное имя или пароль!");
+      }
+    }
+
+    async function transfer() {
+      const to = prompt("Имя получателя (например: Друг1)");
+      const amount = parseInt(prompt("Сколько Sup?"));
+      if (!to || !amount || isNaN(amount)) return alert("Ошибка");
+
+      const data = await fetchData();
+      
+      data.users[currentUser.name].balance = (data.users[currentUser.name].balance || 0) - amount;
+      if (!data.users[to]) data.users[to] = {password: "123", balance: 0, role: "user"};
+      data.users[to].balance = (data.users[to].balance || 0) + amount;
+
+      await saveData(data);
+      alert("✅ Перевод выполнен!");
+      location.reload();
+    }
+
+    async function adminGiveMoney() {
+      const who = prompt("Кому дать Sup?");
+      const sum = parseInt(prompt("Сколько?"));
+      const data = await fetchData();
+      if (data.users[who]) {
+        data.users[who].balance += sum;
+        await saveData(data);
+        alert("Деньги выданы!");
+      }
+    }
+
+    async function adminFine() {
+      const who = prompt("Кому наложить штраф?");
+      const sum = parseInt(prompt("Сумма штрафа?"));
+      const data = await fetchData();
+      if (data.users[who]) {
+        data.users[who].balance -= sum;
+        await saveData(data);
+        alert("Штраф наложен!");
+      }
+    }
+
+    function showUsers() {
+      let msg = "Список пользователей:\n\n";
+      const data = Object.keys(allUsers || {});
+      // Простой вариант
+      alert("Покажи всех пользователей в консоли (F12) или обнови код позже");
+    }
+
+    function logout() { location.reload(); }
+
+    window.onload = async () => {
+      console.log("SuperBank загружен. Войди как admin / 123");
+    };
+  </script>
+</body>
+</html>
