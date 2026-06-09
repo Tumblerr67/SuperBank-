@@ -1,0 +1,2 @@
+const BIN_ID = 6a27e0a8f5f4af5e29d0d51a;
+const MASTER_KEY = $2a$10$7BBBzuxyXv.zDmoQCqeKH0H0M9jcb0Yf/sxtYcIZ0rwWe7P6spkj6;
